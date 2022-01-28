@@ -6,6 +6,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:math' show Random, max;
 import 'dart:typed_data';
+import 'package:a_star/a_star.dart';
 
 import 'point_int.dart';
 import 'util.dart';
@@ -13,6 +14,61 @@ import 'util.dart';
 part 'puzzle_simple.dart';
 
 part 'puzzle_smart.dart';
+
+class PuzzleSolution {
+  int _index;
+  final List<int> moves;
+
+  PuzzleSolution(this.moves) : _index = 0;
+
+  int nextMoveValue() => moves[_index++];
+}
+
+class PuzzleSolver {
+  PuzzleSolution solve(Puzzle puzzle) {
+    final network = PuzzleNodeNetwork();
+    final astar = AStar(network);
+    final start = PuzzleNode(puzzle);
+    final goal = PuzzleNode(Puzzle.solved(puzzle.width, puzzle.height));
+    final nodes = astar.findPathSync(start, goal).toList();
+    final moves = <int>[];
+    for (var i = 0; i < nodes.length - 1; ++i) {
+      final left = nodes[i];
+      final right = nodes[i + 1];
+      final openIndex = right.puzzle.openIndex();
+      final value = left.puzzle[openIndex];
+      moves.add(value);
+    }
+    // Solve for moves from nodes
+    return PuzzleSolution(moves);
+  }
+}
+
+class PuzzleNode extends Object with Node<PuzzleNode> {
+  PuzzleNode(this.puzzle);
+
+  final Puzzle puzzle;
+}
+
+class PuzzleNodeNetwork extends Graph<PuzzleNode> {
+  @override
+  late Iterable<PuzzleNode> allNodes;
+
+  @override
+  num getDistance(PuzzleNode a, PuzzleNode b) => 1;
+
+  @override
+  num getHeuristicDistance(PuzzleNode a, PuzzleNode b) {
+    return a.puzzle.fitness - b.puzzle.fitness;
+  }
+
+  @override
+  Iterable<PuzzleNode> getNeighboursOf(PuzzleNode node) {
+    return node.puzzle
+        .clickableValues()
+        .map((value) => PuzzleNode(node.puzzle.clickValue(value)!));
+  }
+}
 
 final _rnd = Random();
 
@@ -54,8 +110,14 @@ abstract class Puzzle {
     return Puzzle._raw(width, source);
   }
 
-  factory Puzzle(int width, int height) =>
-      Puzzle.raw(width, _randomList(width, height));
+  factory Puzzle.solved(int width, int height) =>
+      Puzzle.raw(width, _orderedList(width, height));
+
+  factory Puzzle(int width, int height) {
+    // Puzzle.raw(width, _randomList(width, height));
+    final puzzle = Puzzle.raw(width, _orderedList(width, height));
+    return puzzle.clickValue(12)!.clickValue(0)!;
+  }
 
   factory Puzzle.parse(String input) {
     final rows = LineSplitter.split(input).map((line) {
@@ -103,7 +165,9 @@ abstract class Puzzle {
     return count;
   }
 
+  // tileCount is used to represent the open tile.
   Point openPosition() => coordinatesOf(tileCount);
+  int openIndex() => indexOf(tileCount);
 
   /// A measure of how close the puzzle is to being solved.
   ///
@@ -251,6 +315,9 @@ abstract class Puzzle {
         .join('\n');
   }
 }
+
+Uint8List _orderedList(int width, int height) => Uint8List.fromList(
+    List<int>.generate(width * height, (i) => i, growable: false));
 
 Uint8List _randomList(int width, int height) => _randomizeList(
     width, List<int>.generate(width * height, (i) => i, growable: false));

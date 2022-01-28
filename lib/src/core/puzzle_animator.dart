@@ -16,6 +16,7 @@ class PuzzleAnimator implements PuzzleProxy {
   bool _nextRandomVertical = true;
   Puzzle _puzzle;
   int _clickCount = 0;
+  PuzzleSolution? _solution;
 
   bool _stable = true;
 
@@ -68,7 +69,21 @@ class PuzzleAnimator implements PuzzleProxy {
     _puzzle = _puzzle.clickRandom(vertical: _nextRandomVertical)!;
     _nextRandomVertical = !_nextRandomVertical;
     _clickCount++;
-    _controller.add(PuzzleEvent.random);
+    _controller.add(PuzzleEvent.autoplay);
+  }
+
+  void playToSolve() {
+    if (_puzzle.fitness == 0) {
+      return;
+    }
+    if (_solution == null) {
+      final solver = PuzzleSolver();
+      _solution = solver.solve(_puzzle);
+    }
+
+    _puzzle = _puzzle.clickValue(_solution!.nextMoveValue())!;
+    _clickCount++;
+    _controller.add(PuzzleEvent.autoplay);
   }
 
   @override

@@ -122,7 +122,7 @@ class PuzzleHomeState extends State
 
   void _onPuzzleEvent(PuzzleEvent e) {
     _autoPlayListenable._notify();
-    if (e != PuzzleEvent.random) {
+    if (e != PuzzleEvent.autoplay) {
       _setAutoPlay(false);
     }
     _tickerTimeSinceLastEvent = Duration.zero;
@@ -165,7 +165,7 @@ class PuzzleHomeState extends State
 
     if (_autoPlay &&
         _tickerTimeSinceLastEvent > const Duration(milliseconds: 200)) {
-      puzzle.playRandom();
+      puzzle.playToSolve();
 
       if (puzzle.solved) {
         _setAutoPlay(false);
